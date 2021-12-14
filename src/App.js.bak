@@ -1,0 +1,129 @@
+import React, {useRef, useState, useCallback, useMemo} from 'react';
+
+import CreateUser from './component/CreateUser';
+import UserList from './component/UserList';
+
+
+function countActiveUsers(users) {
+  console.log('활성 사용자 수를 세는중...')
+  return users.filter(user => user.active).length;
+}
+
+
+function App() {
+  const [inputs, setInputs] = useState({
+    username: '',
+    email: '',
+    id:'',
+  });
+
+  const {username, email, id} = inputs;
+  
+  const onChange = useCallback((event) => {
+    const {name, value} = event.target;
+
+    // 여기에서 name에 대괄호로 감싼 이유는 여러개의 input name 속성을 키값으로 쓰겠다는 의미
+    // obj['name']과 obj.name은 같다
+    setInputs({
+      ...inputs,
+      [name]:value
+    });
+  }, [inputs]);
+
+
+  const [users, setUsers] = useState([
+    {
+      id: 1,
+      username: '경아',
+      email: 'kyung@naver.com',
+      active: true,
+    },
+    {
+      id: 2,
+      username: '홍길동',
+      email: 'hong@naver.com',
+      active: false,
+    },
+    {
+      id: 3,
+      username: '김미영',
+      email: 'kim@naver.com',
+      active: false,
+    }
+  ]);
+
+  const nextId = useRef(4);
+  
+  const onCreate = useCallback(() => {
+    const user = {
+      id: nextId.current,
+      username,
+      email
+    };
+    
+    // 배열에 변화를 줄때는 객체와 마찬가지로 불변성을 지켜줘야함
+    // 그래서 push, splice, sort 등의 함수를 사용하면 안됨 (원본배열에 쓰면 안된다)
+    // 1. 스프레드 연산자 사용법
+    setUsers([...users, user]);
+    // 2. concat 사용법
+    // setUsers(users.concat(user));
+
+    // input 초기화
+    setInputs({
+      username: '',
+      email: ''
+    });
+
+    nextId.current += 1;
+  }, [users, username, email]);
+
+  // 리액트에서는 배열을 삭제할때 filter 내장 함수를 쓴다
+  // filter는 진짜로 삭제가 되는게 아니라 특정 조건이 만족하는 원소들만 추출하여 새로운 배열을 만든다
+  const onRemove = useCallback((id) => {
+    // user.id가 파라미터로 들어온 id와 일치하지 않는 원소만 추출해서 새로운 배열을 만든다 (user.id가 파라미터 id와 동일한 것을 제거한다는 말과 동일)
+    setUsers(users.filter((user) => user.id !== id));
+  }, [users]);
+
+
+  const onToggle = useCallback((id) => {
+    // user.id와 파라미터 id가 같다면 해당하는 오브젝트의 active 값을 반전 시켜서 반환, 다르다면 변화없이 반환
+    setUsers(users.map((user) => user.id === id ? {...user, active: !user.active} : user))
+  }, [users]);
+
+
+  // 해당 user 객체를 props로 받아와서 setInput을 이용해 input 태그에 계정명과 이메일이 입력되도록 함
+  // 그러면 현재 유저 정보가 inputs 상태에 담김
+  const onModify = (user) => {
+    setInputs({
+      username: user.username,
+      email: user.email,
+      id: user.id,
+    })
+  }
+
+  // 위에 onModify 함수로 인해 inputs 상태 값이 존재하기에 상태 값을 아래와 같이 불러서 쓸 수가 있음
+  const onUpdate = () => {
+    setUsers(
+      users.map((user) => user.id === id ? {...user, username: username, email: email} : user)
+    )
+
+    setInputs({
+      username:'',
+      email: '',
+      id: '',
+    })
+  }
+
+
+  const count = useMemo(() => countActiveUsers(users) , [users]);
+
+  return (
+    <>
+      <CreateUser username={username} email={email} onChange={onChange} onCreate={onCreate} onUpdate={onUpdate} />
+      <UserList users={users} onRemove={onRemove} onModify={onModify} onToggle={onToggle} />
+      <div>활성 사용자 수 : {count}</div>
+    </>
+  );
+}
+
+export default App;
